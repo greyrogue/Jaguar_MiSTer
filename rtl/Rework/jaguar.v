@@ -48,6 +48,9 @@ module jaguar
 
 	input               mouse_ena_1,
 	input               mouse_ena_2,
+	
+	output              comlynx_tx,
+	input               comlynx_rx,
 
 	output              startcas,
 
@@ -65,6 +68,9 @@ assign cart_oe[1] = (~cart_oe_n[1] & ~cart_ce_n);
 wire os_rom_ce_n;
 wire os_rom_oe_n;
 wire os_rom_oe = (~os_rom_ce_n & ~os_rom_oe_n);	// os_rom_oe feeds back TO the core, to enable the internal drivers.
+
+assign j_xserin = comlynx_rx;
+assign comlynx_tx = j_xserout;
 
 // Note: Turns out the custom chips use synchronous resets.
 // So these clocks need to be left running during reset, else the core won't start up correctly the next time the HPS resets it. ElectronAsh.
@@ -321,7 +327,6 @@ assign j_xpclkin = j_xpclkout;
 assign j_xdbgl = xdbgl;                 // Bus Grant from Tom
 assign j_xoel_0 = xoel[0];              // Output Enable
 assign j_xwel_0 = xwel[0];              // Write Enable
-assign j_xserin = 1'b1;
 assign j_xdtackl = xdtackl;             // Data Acknowledge from Tom (also goes to the 68K)
 assign j_xi2srxd = 1'b1;                // (Async?) I2S receive
 assign j_xeint[0] = 1'b1;               // External Interrupt
