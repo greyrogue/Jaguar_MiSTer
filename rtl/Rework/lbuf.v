@@ -235,53 +235,30 @@ begin
 	end
 end
 
+// sadd = unsigned + signed saturating
 // LBUF.NET (106) - rmwd2[0] : sadd8
-_sadd8 rmwd2_index_0_inst
-(
-	.z /* OUT */ (rmwd2[7:0]),
-	.a /* IN */ (rmwd1[7:0]),
-	.b /* IN */ (lbwd[7:0])
-);
+wire [8:0] rmwd2a = {1'b0,rmwd1[7:0]} + lbwd[7:0];
+assign rmwd2[7:0] = (rmwd2a[8] ^ lbwd[7]) ? {8{rmwd2a[8]}} : rmwd2a[7:0];
 
 // LBUF.NET (107) - rmwd2[8] : sadd4
-_sadd4 rmwd2_index_8_inst
-(
-	.z /* OUT */ (rmwd2[11:8]),
-	.a /* IN */ (rmwd1[11:8]),
-	.b /* IN */ (lbwd[11:8])
-);
+wire [12:8] rmwd2b = {1'b0,rmwd1[11:8]} + lbwd[11:8];
+assign rmwd2[11:8] = (rmwd2b[12] ^ lbwd[11]) ? {4{rmwd2b[12]}} : rmwd2b[11:8];
 
 // LBUF.NET (108) - rmwd2[12] : sadd4
-_sadd4 rmwd2_index_12_inst
-(
-	.z /* OUT */ (rmwd2[15:12]),
-	.a /* IN */ (rmwd1[15:12]),
-	.b /* IN */ (lbwd[15:12])
-);
+wire [16:12] rmwd2c = {1'b0,rmwd1[15:12]} + lbwd[15:12];
+assign rmwd2[15:12] = (rmwd2c[16] ^ lbwd[15]) ? {4{rmwd2c[16]}} : rmwd2c[15:12];
 
 // LBUF.NET (109) - rmwd2[16] : sadd8
-_sadd8 rmwd2_index_16_inst
-(
-	.z /* OUT */ (rmwd2[23:16]),
-	.a /* IN */ (rmwd1[23:16]),
-	.b /* IN */ (lbwd[23:16])
-);
+wire [24:16] rmwd2d = {1'b0,rmwd1[23:16]} + lbwd[23:16];
+assign rmwd2[23:16] = (rmwd2d[24] ^ lbwd[23]) ? {8{rmwd2d[24]}} : rmwd2d[23:16];
 
 // LBUF.NET (110) - rmwd2[24] : sadd4
-_sadd4 rmwd2_index_24_inst
-(
-	.z /* OUT */ (rmwd2[27:24]),
-	.a /* IN */ (rmwd1[27:24]),
-	.b /* IN */ (lbwd[27:24])
-);
+wire [28:24] rmwd2e = {1'b0,rmwd1[27:24]} + lbwd[27:24];
+assign rmwd2[27:24] = (rmwd2e[28] ^ lbwd[27]) ? {4{rmwd2e[28]}} : rmwd2e[27:24];
 
 // LBUF.NET (111) - rmwd2[28] : sadd4
-_sadd4 rmwd2_index_28_inst
-(
-	.z /* OUT */ (rmwd2[31:28]),
-	.a /* IN */ (rmwd1[31:28]),
-	.b /* IN */ (lbwd[31:28])
-);
+wire [32:28] rmwd2f = {1'b0,rmwd1[31:28]} + lbwd[31:28];
+assign rmwd2[31:28] = (rmwd2f[32] ^ lbwd[31]) ? {4{rmwd2f[32]}} : rmwd2f[31:28];
 
 // LBUF.NET (120) - wd[0-31] : mx4p
 assign wd[31:0] = extadd ? dw[31:0] : (rmw ? rmwd2[31:0] : lbwd[31:0]);

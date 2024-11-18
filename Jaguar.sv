@@ -182,7 +182,6 @@ module emu
 ///////// Default values for ports not used in this core /////////
 
 assign ADC_BUS  = 'Z;
-assign USER_OUT = '1;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 
@@ -196,6 +195,13 @@ assign HDMI_BLACKOUT = 0;
 assign LED_DISK = 0;
 assign LED_POWER = 0;
 assign BUTTONS = 0;
+
+assign USER_OUT[0] = 1'b1;
+assign USER_OUT[2] = 1'b1;
+assign USER_OUT[3] = 1'b1;
+assign USER_OUT[4] = 1'b1;
+assign USER_OUT[5] = 1'b1;
+assign USER_OUT[6] = 1'b1;
 
 assign LED_USER  = ioctl_download;
 
@@ -254,6 +260,7 @@ localparam CONF_STR = {
 	"O9A,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"O56,Mouse,Disabled,JoyPort1,JoyPort2;",
 	"O3,CPU Speed,Normal,Turbo;",
+	"OB,JagLink,Disabled,Enabled;",
 	"-;",
 	"R0,Reset;",
 	"J1,A,B,C,Option,Pause,1,2,3,4,5,6,7,8,9,0,Star,Hash;",
@@ -265,8 +272,8 @@ localparam CONF_STR = {
 
 wire [63:0] status;
 wire  [1:0] buttons;
-wire [15:0] joystick_0;
-wire [15:0] joystick_1;
+wire [31:0] joystick_0;
+wire [31:0] joystick_1;
 wire        ioctl_download;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
@@ -278,6 +285,8 @@ wire [10:0] ps2_key;
 wire [24:0] ps2_mouse;
 wire [21:0] gamma_bus;
 wire [15:0] sdram_sz;
+wire [15:0] analog_0;
+wire [15:0] analog_1;
 
 hps_io #(.CONF_STR(CONF_STR), .PS2DIV(1000), .WIDE(1)) hps_io
 (
@@ -291,6 +300,8 @@ hps_io #(.CONF_STR(CONF_STR), .PS2DIV(1000), .WIDE(1)) hps_io
 
 	.joystick_0(joystick_0),
 	.joystick_1(joystick_1),
+	.joystick_l_analog_0(analog_0),
+	.joystick_l_analog_1(analog_1),
 
 	.new_vmode(0),
 
@@ -404,10 +415,8 @@ wire [63:0] dram_q = ch1_dout[63:0];
 wire [23:0] abus_out;
 wire [7:0] os_rom_q;
 
-wire pix_clk;
 wire hblank;
 wire vblank;
-wire vga_bl;
 wire vga_hs_n;
 wire vga_vs_n;
 wire vid_ce;
@@ -427,6 +436,9 @@ wire startcas;
 wire [15:0] aud_16_l;
 wire [15:0] aud_16_r;
 
+assign ser_data_in = status[11] ? USER_IN[0] : 1'b1;
+assign USER_OUT[1] = status[11] ? ser_data_out : 1'b1;
+
 jaguar jaguar_inst
 (
 	.xresetl( xresetl ) ,		// input  xresetl
@@ -443,35 +455,22 @@ jaguar jaguar_inst
 	.dram_q( dram_q ) ,			// input [63:0] dram_q
 	.dram_oe( dram_oe ) ,		// input [3:0] dram_oe
 
-	.fdram( fdram ) ,				// output  fdram
 	.ram_rdy( ram_rdy ) ,		// input  ram_rdy
 
 	.abus_out( abus_out ) ,			// output [23:0] Main Address bus for Tom/Jerry/68K/BIOS/CART.
-
-	//.os_rom_ce_n( os_rom_ce_n ) ,	// output  os_rom_ce_n
-	//.os_rom_oe_n( os_rom_oe_n ) ,	// output  os_rom_oe_n
-	//.os_rom_oe( os_rom_oe ) ,		// input  os_rom_oe
 	.os_rom_q( os_rom_q ) ,			// input [7:0] os_rom_q
 
-	//.cart_oe_n( cart_oe_n ) ,	// output [1:0] cart_oe_n
 	.cart_ce_n( cart_ce_n ) ,	// output  cart_ce_n
 	.cart_q( cart_q ) ,			// input [31:0] cart_q
-	//.cart_oe( cart_oe ) ,		// input [1:0] cart_oe
 
-	.vga_bl( vga_bl ) ,		// output  vga_bl
 	.vga_vs_n( vga_vs_n ) ,	// output  vga_vs_n
 	.vga_hs_n( vga_hs_n ) ,	// output  vga_hs_n
 	.vga_r( vga_r ) ,			// output [7:0] vga_r
 	.vga_g( vga_g ) ,			// output [7:0] vga_g
 	.vga_b( vga_b ) ,			// output [7:0] vga_b
 
-	.pix_clk( pix_clk ) ,	// output  pix_clk
-
 	.hblank( hblank ) ,		// output hblank
 	.vblank( vblank ) ,		// output vblank
-
-//	.aud_l_pwm( aud_l_pwm ) ,	// output  aud_l_pwm
-//	.aud_r_pwm( aud_r_pwm ) , 	// output  aud_r_pwm
 
 	.aud_16_l( aud_16_l ) ,		// output  [15:0] aud_16_l
 	.aud_16_r( aud_16_r ) ,		// output  [15:0] aud_16_r
@@ -481,6 +480,11 @@ jaguar jaguar_inst
 	.vid_ce( vid_ce ) ,
 
 	.joystick_0( joystick_0 ) ,
+	.joystick_1( joystick_1 ) ,
+	.analog_0( $signed(analog_0[7:0]) + 9'sd127 ),
+	.analog_1( $signed(analog_0[15:8]) + 9'sd127 ),
+	.analog_2( $signed(analog_1[7:0]) + 9'sd127 ),
+	.analog_3( $signed(analog_1[15:8]) + 9'sd127 ),
 
 	.startcas( startcas ) ,
 
@@ -491,7 +495,10 @@ jaguar jaguar_inst
 	.ps2_mouse( ps2_mouse ) ,
 
 	.mouse_ena_1( status[6:5]==1 ) ,
-	.mouse_ena_2( status[6:5]==2 )
+	.mouse_ena_2( status[6:5]==2 ) ,
+	
+	.comlynx_tx( ser_data_out ) ,
+   .comlynx_rx( ser_data_in )
 );
 
 
@@ -577,6 +584,14 @@ video_mixer #(.LINE_LENGTH(700), .HALF_DEPTH(0), .GAMMA(1)) video_mixer
 	.CE_PIXEL(CE_PIXEL)
 );
 
+// assign VGA_R = vga_r;
+// assign VGA_G = vga_g;
+// assign VGA_B = vga_b;
+// assign VGA_VS = vga_vs_n;
+// assign VGA_HS = vga_hs_n;
+// assign VGA_DE = hblank & vblank;
+// assign CE_PIXEL = vid_ce;
+
 wire aud_l_pwm;
 wire aud_r_pwm;
 
@@ -637,7 +652,6 @@ assign cart_q = (!abus_out[2]) ? DDRAM_DOUT[63:32] : DDRAM_DOUT[31:00];
 reg [3:0] ram_count;
 
 wire [3:0] dram_oe = (~dram_cas_n) ? ~dram_oe_n[3:0] : 4'b0000;
-wire fdram;
 wire ram_rdy = ~ch1_req;// && ((mem_cyc == `RAM_IDLE) || ch1_ready);	// Latency kludge.
 
 // From the core into SDRAM.
