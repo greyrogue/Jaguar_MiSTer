@@ -436,6 +436,8 @@ wire startcas;
 wire [15:0] aud_16_l;
 wire [15:0] aud_16_r;
 
+wire ser_data_in;
+wire ser_data_out;
 assign ser_data_in = status[11] ? USER_IN[0] : 1'b1;
 assign USER_OUT[1] = status[11] ? ser_data_out : 1'b1;
 
