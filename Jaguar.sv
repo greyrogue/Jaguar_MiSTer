@@ -436,7 +436,7 @@ else begin
 //	if (RESET) ioctl_wait <= 0;
 end
 
-wire reset = RESET | status[0] | buttons[1] | status[14];
+wire reset = RESET | status[0] | buttons[1] | status[15];
 
 wire xresetl = !(reset | ioctl_download);	// Forces reset on BIOS (boot.rom) load (ioctl_index==0), AND cart ROM.
 wire [9:0] dram_a;
@@ -794,6 +794,42 @@ wire [31:0] cart_q1;
 wire rom_wrack;// = 1'b1;	// TESTING!!
 reg cart_diff;
 
+//32'h04040404; // 32 bit
+//32'h02020202; // 16 bit
+//32'h00000000; // 8 bit
+reg [3:0] cart_b = 0;
+always @(posedge clk_sys)
+begin
+	if (loader_addr[22:1]==22'h000200 && loader_en && loader_wr && rom_index)
+		if (loader_data_bs[15:0]==16'h0202)
+			cart_b[3:2] <= 2'b01;
+		else if (loader_data_bs[15:0]==16'h0000)
+			cart_b[3:2] <= 2'b10;
+		else
+			cart_b[3:2] <= 2'b00;
+	if (loader_addr[22:1]==22'h000201 && loader_en && loader_wr && rom_index)
+		if (loader_data_bs[15:0]==16'h0202 && cart_b[3:2]==2'b01)
+			cart_b[3:2] <= 2'b01;
+		else if (loader_data_bs[15:0]==16'h0000 && cart_b[3:2]==2'b10)
+			cart_b[3:2] <= 2'b10;
+		else
+			cart_b[3:2] <= 2'b00;
+	if (cart_rd_trig)
+			cart_b[1:0] <= abus_out[1:0];
+end
+
+assign cart_q[31:16] = cart_qs[31:16];
+assign cart_q[15:8] = (cart_b[2] && ~cart_b[1]) ? cart_qs[31:24] : cart_qs[15:8]; // 16bit high or default
+assign cart_q[7:0] = (cart_b==4'b1000) ? cart_qs[31:24] // 8 bit
+                    :(cart_b==4'b1001) ? cart_qs[23:16] // 8 bit
+						  :(cart_b==4'b1010) ? cart_qs[15:8]  // 8 bit
+						  :(cart_b==4'b1011) ? cart_qs[7:0]  // 8 bit
+						  :(cart_b==4'b0100) ? cart_qs[23:16] // 16 bit high
+						  :(cart_b==4'b0101) ? cart_qs[23:16] // 16 bit high
+						  :(cart_b==4'b0110) ? cart_qs[7:0] // 16 bit low
+						  :(cart_b==4'b0111) ? cart_qs[7:0] // 16 bit low
+						  : cart_qs[7:0]; //default 32 bit
+
 `define FAST_SDRAM
 `ifdef FAST_SDRAM
 reg [7:0] cas_latch;
@@ -860,6 +896,7 @@ wire use_fastram = 0;
 wire [63:32] fastram;
 `endif
 
+wire [31:0] cart_qs;
 sdram sdram
 (
 	.init               (~pll_locked || (~old_ramreset && status[15])),
@@ -894,7 +931,7 @@ sdram sdram
 	.ch1_64             (ch1_64),
 
 	.ch2_addr           ((loader_en) ? loader_addr[22:1] : {abus_out[22:2],1'b0}),    // 25 bit address for 8bit mode. addr[0] = 0 for 16bit mode for correct operations.
-	.ch2_dout           (cart_q),             // data output to cpu
+	.ch2_dout           (cart_qs),            // data output to cpu
 	.ch2_din            (loader_data_bs),     // data input from cpu
 	.ch2_req            ((loader_en) ? loader_wr & rom_index : cart_rd_trig),     // request
 	.ch2_rnw            ((loader_en) ? !loader_wr & rom_index : 1'b1),     // 1 - read, 0 - write
